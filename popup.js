@@ -151,20 +151,17 @@ function showConfigureView() {
     }
     await saveRootFolderId(folderId);
     await loadAndShowIndex(folderId);
-  });
+  }, { once: true });
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') btn.click();
-  });
+  }, { once: true });
 }
 
 document.getElementById('btn-settings').addEventListener('click', () => {
-  // Clear rootFolderId and show configure view
   chrome.storage.local.remove(['rootFolderId', 'iconIndex'], () => {
     state.index = null;
-    state.token = null;
     showConfigureView();
-    // Re-acquire token silently
     getSilentToken().then(t => { if (t) state.token = t; });
   });
 });
