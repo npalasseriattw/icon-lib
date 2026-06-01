@@ -262,6 +262,7 @@ function renderMain() {
   document.getElementById('btn-clear-search').classList.add('hidden');
   updateSyncBadge(state.index.builtAt);
   renderRoot();
+  searchBound = false;
   bindSearchInput();
 }
 
@@ -372,7 +373,7 @@ function getAllSubFolderIds(folderId) {
   while (queue.length) {
     const id = queue.shift();
     for (const f of state.index.folders) {
-      if (f.parentId === id) { ids.add(f.id); queue.push(f.id); }
+      if (f.parentId === id && !ids.has(f.id)) { ids.add(f.id); queue.push(f.id); }
     }
   }
   return ids;
