@@ -252,8 +252,320 @@ function handleDriveError(err, rootFolderId) {
   }
 }
 
+// ── Rendering ──────────────────────────────────────────────────────
 function renderMain() {
-  // Implemented in Task 7
+  state.currentFolderId = null;
+  state.breadcrumb = [];
+  state.searchQuery = '';
+  showView('view-main');
+  document.getElementById('search-input').value = '';
+  document.getElementById('btn-clear-search').classList.add('hidden');
+  updateSyncBadge(state.index.builtAt);
+  renderRoot();
+  bindSearchInput();
+}
+
+function renderRoot() {
+  state.currentFolderId = null;
+  renderBreadcrumb([{ id: null, name: 'All icons', isCurrent: true }]);
+
+  const topFolders = state.index.folders.filter(f => f.parentId === state.index.rootFolderId);
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+
+  if (topFolders.length === 0) {
+    renderIconGrid(state.index.files, content, false);
+    setFooter(`${state.index.files.length} icons`, null, null);
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'folder-list';
+
+  for (const folder of topFolders) {
+    const count = countIconsInFolder(folder.id);
+    const hasSubFolders = state.index.folders.some(f => f.parentId === folder.id);
+    const countLabel = hasSubFolders ? `${countFolders(folder.id)} folders` : `${count} icons`;
+    list.appendChild(makeFolderRow(folder, countLabel));
+  }
+
+  content.appendChild(list);
+
+  const total = state.index.files.length;
+  const folderCount = topFolders.length;
+  setFooter(`${folderCount} folders · ${total} icons total`, null, null);
+}
+
+function renderFolder(folderId) {
+  state.currentFolderId = folderId;
+
+  const crumbs = buildCrumbPath(folderId);
+  renderBreadcrumb(crumbs);
+
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+
+  const subFolders = state.index.folders.filter(f => f.parentId === folderId);
+  if (subFolders.length > 0) {
+    const list = document.createElement('div');
+    list.className = 'folder-list';
+    for (const sub of subFolders) {
+      const count = countIconsInFolder(sub.id);
+      list.appendChild(makeFolderRow(sub, `${count} icons`));
+    }
+    content.appendChild(list);
+  }
+
+  const files = state.index.files.filter(f => f.folderId === folderId);
+  if (files.length > 0) {
+    renderIconGrid(files, content, false);
+  }
+
+  const driveUrl = `https://drive.google.com/drive/folders/${folderId}`;
+  setFooter(
+    `${files.length} icons${subFolders.length > 0 ? ` · ${subFolders.length} subfolders` : ''}`,
+    'Open in Drive →',
+    () => chrome.tabs.create({ url: driveUrl })
+  );
+}
+
+function renderSearch(query) {
+  state.searchQuery = query;
+
+  const matched = state.index.files.filter(f =>
+    f.name.toLowerCase().includes(query.toLowerCase())
+  );
+
+  const crumb = document.getElementById('breadcrumb');
+  crumb.innerHTML = '';
+  const span = document.createElement('span');
+  span.className = 'bc-item current';
+  span.textContent = `Results for "${query}"`;
+  crumb.appendChild(span);
+  const clearSpan = document.createElement('span');
+  clearSpan.className = 'bc-clear';
+  clearSpan.textContent = '✕ Clear';
+  clearSpan.addEventListener('click', clearSearch);
+  crumb.appendChild(clearSpan);
+
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+  renderIconGrid(matched, content, true);
+  setFooter(`${matched.length} result${matched.length !== 1 ? 's' : ''} for "${query}"`, null, null);
+}
+
+// ── Helpers ────────────────────────────────────────────────────────
+function countIconsInFolder(folderId) {
+  const subFolderIds = getAllSubFolderIds(folderId);
+  return state.index.files.filter(f =>
+    f.folderId === folderId || subFolderIds.has(f.folderId)
+  ).length;
+}
+
+function countFolders(folderId) {
+  return state.index.folders.filter(f => f.parentId === folderId).length;
+}
+
+function getAllSubFolderIds(folderId) {
+  const ids = new Set();
+  const queue = [folderId];
+  while (queue.length) {
+    const id = queue.shift();
+    for (const f of state.index.folders) {
+      if (f.parentId === id) { ids.add(f.id); queue.push(f.id); }
+    }
+  }
+  return ids;
+}
+
+function buildCrumbPath(folderId) {
+  const crumbs = [];
+  let current = state.index.folders.find(f => f.id === folderId);
+  while (current) {
+    crumbs.unshift({ id: current.id, name: current.name });
+    const parent = state.index.folders.find(f => f.id === current.parentId);
+    current = parent;
+  }
+  const result = [{ id: null, name: 'All icons' }, ...crumbs];
+  result[result.length - 1].isCurrent = true;
+  return result;
+}
+
+function renderBreadcrumb(crumbs) {
+  const el = document.getElementById('breadcrumb');
+  el.innerHTML = '';
+  crumbs.forEach((crumb, i) => {
+    const span = document.createElement('span');
+    span.textContent = crumb.name;
+    span.className = `bc-item${crumb.isCurrent ? ' current' : ''}`;
+    if (!crumb.isCurrent) {
+      span.addEventListener('click', () => {
+        if (crumb.id === null) renderRoot();
+        else renderFolder(crumb.id);
+      });
+    }
+    el.appendChild(span);
+    if (i < crumbs.length - 1) {
+      const sep = document.createElement('span');
+      sep.className = 'bc-sep';
+      sep.textContent = '›';
+      el.appendChild(sep);
+    }
+  });
+}
+
+function makeFolderRow(folder, countLabel) {
+  const row = document.createElement('div');
+  row.className = 'folder-row';
+  row.innerHTML = `
+    <div class="folder-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="1.8" width="16" height="16">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+      </svg>
+    </div>
+    <span class="folder-name">${escapeHtml(folder.name)}</span>
+    <span class="folder-count">${countLabel}</span>
+    <svg class="folder-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13">
+      <path d="m9 18 6-6-6-6"/>
+    </svg>
+  `;
+  row.addEventListener('click', () => renderFolder(folder.id));
+  return row;
+}
+
+function renderIconGrid(files, container, showPath) {
+  const grid = document.createElement('div');
+  grid.className = 'icon-grid';
+  for (const file of files) {
+    grid.appendChild(makeIconTile(file, showPath));
+  }
+  container.appendChild(grid);
+}
+
+function makeIconTile(file, showPath) {
+  const tile = document.createElement('div');
+  tile.className = 'icon-tile';
+  tile.dataset.fileId = file.id;
+  tile.dataset.mimeType = file.mimeType;
+
+  const nameWithoutExt = file.name.replace(/\.(svg|png)$/i, '');
+
+  const img = document.createElement('img');
+  img.alt = nameWithoutExt;
+  img.loading = 'lazy';
+  img.width = 28;
+  img.height = 28;
+  img.style.objectFit = 'contain';
+  img.src = `https://drive.google.com/thumbnail?id=${file.id}&sz=w64`;
+  img.onerror = () => { img.style.display = 'none'; };
+
+  const overlay = document.createElement('div');
+  overlay.className = 'copy-overlay';
+  overlay.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="13" height="13">
+      <rect x="9" y="9" width="13" height="13" rx="2"/>
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+    </svg>
+    Copy
+  `;
+
+  tile.appendChild(img);
+  tile.appendChild(overlay);
+
+  if (showPath) {
+    const pathEl = document.createElement('div');
+    pathEl.className = 'tile-path';
+    pathEl.textContent = file.path;
+    tile.appendChild(pathEl);
+  }
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'tile-name';
+  nameEl.textContent = nameWithoutExt;
+  tile.appendChild(nameEl);
+
+  tile.addEventListener('click', () => handleCopy(file.id, file.mimeType, tile));
+  return tile;
+}
+
+function setFooter(countText, actionLabel, actionFn) {
+  document.getElementById('footer-count').textContent = countText;
+  const actionEl = document.getElementById('footer-action');
+  actionEl.innerHTML = '';
+  const btn = document.createElement('button');
+  btn.className = 'footer-link';
+  if (actionLabel && actionFn) {
+    btn.textContent = actionLabel;
+    btn.addEventListener('click', actionFn);
+  } else {
+    btn.textContent = '↻ Refresh';
+    btn.addEventListener('click', refreshIndex);
+  }
+  actionEl.appendChild(btn);
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ── Search & Refresh ───────────────────────────────────────────────
+let searchBound = false;
+function bindSearchInput() {
+  if (searchBound) return;
+  searchBound = true;
+
+  const input = document.getElementById('search-input');
+  const clearBtn = document.getElementById('btn-clear-search');
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim();
+    clearBtn.classList.toggle('hidden', !q);
+    if (q) {
+      renderSearch(q);
+    } else {
+      if (state.currentFolderId) renderFolder(state.currentFolderId);
+      else renderRoot();
+    }
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') clearSearch();
+  });
+
+  clearBtn.addEventListener('click', clearSearch);
+}
+
+function clearSearch() {
+  const input = document.getElementById('search-input');
+  input.value = '';
+  document.getElementById('btn-clear-search').classList.add('hidden');
+  state.searchQuery = '';
+  if (state.currentFolderId) renderFolder(state.currentFolderId);
+  else renderRoot();
+}
+
+async function refreshIndex() {
+  const rootFolderId = state.index?.rootFolderId ?? await loadRootFolderId();
+  if (!rootFolderId) return;
+  showView('view-loading');
+  document.getElementById('loading-label').textContent = 'Refreshing icons…';
+  try {
+    const index = await buildIndex(state.token, rootFolderId);
+    await saveCachedIndex(index);
+    state.index = index;
+    renderMain();
+  } catch (err) {
+    handleDriveError(err, rootFolderId);
+  }
+}
+
+// ── Copy stub (implemented in Task 8) ─────────────────────────────
+function handleCopy(fileId, mimeType, tileEl) {
+  // Implemented in Task 8
 }
 
 document.addEventListener('DOMContentLoaded', init);
