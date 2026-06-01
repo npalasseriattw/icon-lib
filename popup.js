@@ -1,5 +1,5 @@
 import { extractFolderIdFromUrl, formatTimeAgo, isCacheStale } from './lib/utils.js';
-import { buildIndex, DriveError } from './lib/drive.js';
+import { buildIndex, getFileContent, getFileBlob, DriveError } from './lib/drive.js';
 
 // ── State ──────────────────────────────────────────────────────────
 const state = {
@@ -564,9 +564,81 @@ async function refreshIndex() {
   }
 }
 
-// ── Copy stub (implemented in Task 8) ─────────────────────────────
-function handleCopy(fileId, mimeType, tileEl) {
-  // Implemented in Task 8
+// ── Copy ───────────────────────────────────────────────────────────
+async function svgToPng(svgText, size = 128) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const blob = new Blob([svgText], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      canvas.getContext('2d').drawImage(img, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((pngBlob) => {
+        if (pngBlob) resolve(pngBlob);
+        else reject(new Error('Canvas toBlob returned null'));
+      }, 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('SVG failed to load')); };
+    img.src = url;
+  });
+}
+
+async function handleCopy(fileId, mimeType, tileEl) {
+  if (!navigator.onLine) {
+    showTileError(tileEl, "Can't fetch — offline");
+    return;
+  }
+
+  tileEl.classList.add('copying');
+  const overlay = tileEl.querySelector('.copy-overlay');
+  if (overlay.lastChild) overlay.lastChild.textContent = '…';
+
+  try {
+    if (mimeType === 'image/png') {
+      const pngBlob = await getFileBlob(state.token, fileId);
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+    } else {
+      const svgText = await getFileContent(state.token, fileId);
+      const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+      const pngBlob = await svgToPng(svgText);
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'image/svg+xml': svgBlob,
+          'image/png': pngBlob,
+        }),
+      ]);
+    }
+    showCopiedToast(tileEl);
+  } catch (err) {
+    handleDriveError(err, state.index?.rootFolderId);
+    if (overlay.lastChild) overlay.lastChild.textContent = 'Copy';
+  } finally {
+    tileEl.classList.remove('copying');
+  }
+}
+
+function showCopiedToast(tileEl) {
+  const overlay = tileEl.querySelector('.copy-overlay');
+  if (overlay.lastChild) overlay.lastChild.textContent = 'Copied!';
+  tileEl.classList.add('copying');
+  setTimeout(() => {
+    tileEl.classList.remove('copying');
+    if (overlay.lastChild) overlay.lastChild.textContent = 'Copy';
+  }, 1500);
+}
+
+function showTileError(tileEl, message) {
+  const overlay = tileEl.querySelector('.copy-overlay');
+  const prev = overlay.lastChild?.textContent;
+  if (overlay.lastChild) overlay.lastChild.textContent = message;
+  overlay.style.background = 'rgba(220,38,38,0.88)';
+  setTimeout(() => {
+    if (overlay.lastChild) overlay.lastChild.textContent = prev ?? 'Copy';
+    overlay.style.background = '';
+  }, 2000);
 }
 
 document.addEventListener('DOMContentLoaded', init);
