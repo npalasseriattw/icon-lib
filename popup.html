@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Icon Library</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+  <!-- ── Header (always visible) ── -->
+  <header id="header" class="hidden">
+    <div class="header-left">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="white" width="14" height="14">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+      </div>
+      <span class="app-title">Icon Library</span>
+    </div>
+    <div class="header-right">
+      <span id="sync-badge" class="sync-badge hidden">
+        <span class="sync-dot"></span>
+        <span id="sync-label"></span>
+      </span>
+      <button id="btn-settings" class="icon-btn" title="Change Drive folder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── View: Unauthenticated ── -->
+  <div id="view-auth" class="view hidden">
+    <div class="center-panel">
+      <div class="logo-lg">
+        <svg viewBox="0 0 24 24" fill="white" width="24" height="24">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+      </div>
+      <h2>Icon Library</h2>
+      <p class="muted">Sign in to browse your Drive icons</p>
+      <button id="btn-signin" class="btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+          <polyline points="10 17 15 12 10 7"/>
+          <line x1="15" y1="12" x2="3" y2="12"/>
+        </svg>
+        Sign in with Google
+      </button>
+    </div>
+  </div>
+
+  <!-- ── View: Configure root folder ── -->
+  <div id="view-configure" class="view hidden">
+    <div class="configure-panel">
+      <p class="configure-label">Paste your Google Drive folder URL or ID</p>
+      <input
+        id="input-folder-url"
+        class="text-input"
+        type="text"
+        placeholder="https://drive.google.com/drive/folders/…"
+        autocomplete="off"
+        spellcheck="false"
+      >
+      <span id="configure-error" class="input-error hidden"></span>
+      <button id="btn-save-folder" class="btn-primary">Connect folder</button>
+    </div>
+  </div>
+
+  <!-- ── View: Loading (index build) ── -->
+  <div id="view-loading" class="view hidden">
+    <div id="loading-search" class="search-wrap">
+      <div class="search-inner">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input class="search-input" type="text" placeholder="Search all icons…" disabled>
+      </div>
+    </div>
+    <div class="loading-status">
+      <span id="loading-label">Loading icons…</span>
+    </div>
+    <div class="grid-wrap">
+      <div class="skeleton-grid">
+        <div class="skeleton-tile"></div>
+        <div class="skeleton-tile"></div>
+        <div class="skeleton-tile"></div>
+        <div class="skeleton-tile"></div>
+        <div class="skeleton-tile"></div>
+        <div class="skeleton-tile"></div>
+        <div class="skeleton-tile"></div>
+        <div class="skeleton-tile"></div>
+        <div class="skeleton-tile"></div>
+        <div class="skeleton-tile"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── View: Error ── -->
+  <div id="view-error" class="view hidden">
+    <div class="center-panel">
+      <p id="error-message" class="error-text"></p>
+      <button id="btn-reconnect" class="btn-secondary">Reconnect</button>
+    </div>
+  </div>
+
+  <!-- ── View: Main (browse + search) ── -->
+  <div id="view-main" class="view hidden">
+    <div class="search-wrap">
+      <div class="search-inner">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input id="search-input" class="search-input" type="text" placeholder="Search all icons…">
+        <button id="btn-clear-search" class="clear-btn hidden" title="Clear search">✕</button>
+      </div>
+    </div>
+
+    <div id="breadcrumb" class="breadcrumb"></div>
+
+    <div id="content" class="grid-wrap"></div>
+
+    <footer class="popup-footer">
+      <span id="footer-count" class="footer-count"></span>
+      <span id="footer-action"></span>
+    </footer>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
