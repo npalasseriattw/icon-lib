@@ -592,10 +592,14 @@ async function handleCopy(fileId, mimeType, tileEl) {
     return;
   }
 
+  // Cancel any in-flight toast timer from a previous rapid click
+  if (tileEl._toastTimer) { clearTimeout(tileEl._toastTimer); tileEl._toastTimer = null; }
+
   tileEl.classList.add('copying');
   const overlay = tileEl.querySelector('.copy-overlay');
   if (overlay.lastChild) overlay.lastChild.textContent = '…';
 
+  let succeeded = false;
   try {
     if (mimeType === 'image/png') {
       const pngBlob = await getFileBlob(state.token, fileId);
@@ -611,20 +615,22 @@ async function handleCopy(fileId, mimeType, tileEl) {
         }),
       ]);
     }
+    succeeded = true;
     showCopiedToast(tileEl);
   } catch (err) {
     handleDriveError(err, state.index?.rootFolderId);
     if (overlay.lastChild) overlay.lastChild.textContent = 'Copy';
   } finally {
-    tileEl.classList.remove('copying');
+    // On success, showCopiedToast owns the 'copying' class lifecycle
+    if (!succeeded) tileEl.classList.remove('copying');
   }
 }
 
 function showCopiedToast(tileEl) {
   const overlay = tileEl.querySelector('.copy-overlay');
   if (overlay.lastChild) overlay.lastChild.textContent = 'Copied!';
-  tileEl.classList.add('copying');
-  setTimeout(() => {
+  tileEl._toastTimer = setTimeout(() => {
+    tileEl._toastTimer = null;
     tileEl.classList.remove('copying');
     if (overlay.lastChild) overlay.lastChild.textContent = 'Copy';
   }, 1500);
