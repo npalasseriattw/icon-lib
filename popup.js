@@ -453,12 +453,27 @@ function makeIconTile(file, showPath) {
 
   const img = document.createElement('img');
   img.alt = nameWithoutExt;
-  img.loading = 'lazy';
   img.width = 28;
   img.height = 28;
   img.style.objectFit = 'contain';
-  img.src = `https://drive.google.com/thumbnail?id=${file.id}&sz=w64`;
-  img.onerror = () => { img.style.display = 'none'; };
+
+  if (file.mimeType === 'image/svg+xml') {
+    // Fetch SVG content and create a blob URL for reliable rendering
+    // (Drive's thumbnail endpoint doesn't reliably serve SVGs)
+    getFileContent(state.token, file.id)
+      .then(svgText => {
+        const blob = new Blob([svgText], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        img.src = url;
+        // Revoke after load to free memory
+        img.onload = () => URL.revokeObjectURL(url);
+        img.onerror = () => { URL.revokeObjectURL(url); img.style.display = 'none'; };
+      })
+      .catch(() => { img.style.display = 'none'; });
+  } else {
+    img.src = `https://drive.google.com/thumbnail?id=${file.id}&sz=w64`;
+    img.onerror = () => { img.style.display = 'none'; };
+  }
 
   const overlay = document.createElement('div');
   overlay.className = 'copy-overlay';
