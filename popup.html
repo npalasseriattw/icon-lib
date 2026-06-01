@@ -26,7 +26,7 @@
         <span class="sync-dot"></span>
         <span id="sync-label"></span>
       </span>
-      <button id="btn-settings" class="icon-btn" title="Change Drive folder">
+      <button id="btn-settings" class="icon-btn" title="Change Drive folder" aria-label="Change Drive folder">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
@@ -62,7 +62,7 @@
   <!-- ── View: Configure root folder ── -->
   <div id="view-configure" class="view hidden">
     <div class="configure-panel">
-      <p class="configure-label">Paste your Google Drive folder URL or ID</p>
+      <label class="configure-label" for="input-folder-url">Paste your Google Drive folder URL or ID</label>
       <input
         id="input-folder-url"
         class="text-input"
@@ -83,7 +83,7 @@
         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13">
           <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
         </svg>
-        <input class="search-input" type="text" placeholder="Search all icons…" disabled>
+        <input class="search-input" type="text" placeholder="Search all icons…" disabled aria-label="Search icons">
       </div>
     </div>
     <div class="loading-status">
@@ -120,8 +120,8 @@
         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13">
           <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
         </svg>
-        <input id="search-input" class="search-input" type="text" placeholder="Search all icons…">
-        <button id="btn-clear-search" class="clear-btn hidden" title="Clear search">✕</button>
+        <input id="search-input" class="search-input" type="text" placeholder="Search all icons…" aria-label="Search icons">
+        <button id="btn-clear-search" class="clear-btn hidden" title="Clear search" aria-label="Clear search">✕</button>
       </div>
     </div>
 
