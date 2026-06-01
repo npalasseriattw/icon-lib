@@ -464,10 +464,9 @@ function makeIconTile(file, showPath) {
       .then(svgText => {
         const blob = new Blob([svgText], { type: 'image/svg+xml' });
         const url = URL.createObjectURL(blob);
-        img.src = url;
-        // Revoke after load to free memory
         img.onload = () => URL.revokeObjectURL(url);
         img.onerror = () => { URL.revokeObjectURL(url); img.style.display = 'none'; };
+        img.src = url;
       })
       .catch(() => { img.style.display = 'none'; });
   } else {
