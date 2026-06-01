@@ -252,6 +252,25 @@ function handleDriveError(err, rootFolderId) {
   }
 }
 
+// ── Thumbnail semaphore — cap concurrent SVG fetches ───────────────
+const thumbSem = (() => {
+  const LIMIT = 6;
+  let active = 0;
+  const queue = [];
+  return {
+    async acquire() {
+      if (active < LIMIT) { active++; return; }
+      return new Promise(resolve => queue.push(resolve));
+    },
+    release() {
+      active--;
+      if (queue.length) { active++; queue.shift()(); }
+    },
+  };
+})();
+
+const GRID_PAGE_SIZE = 100;
+
 // ── Rendering ──────────────────────────────────────────────────────
 function renderMain() {
   state.currentFolderId = null;
@@ -435,12 +454,28 @@ function makeFolderRow(folder, countLabel) {
 }
 
 function renderIconGrid(files, container, showPath) {
-  const grid = document.createElement('div');
-  grid.className = 'icon-grid';
-  for (const file of files) {
-    grid.appendChild(makeIconTile(file, showPath));
+  let offset = 0;
+
+  function renderPage() {
+    const grid = document.createElement('div');
+    grid.className = 'icon-grid';
+    const page = files.slice(offset, offset + GRID_PAGE_SIZE);
+    for (const file of page) {
+      grid.appendChild(makeIconTile(file, showPath));
+    }
+    container.appendChild(grid);
+    offset += GRID_PAGE_SIZE;
+
+    if (offset < files.length) {
+      const btn = document.createElement('button');
+      btn.className = 'load-more-btn';
+      btn.textContent = `Show more (${files.length - offset} remaining)`;
+      btn.addEventListener('click', () => { btn.remove(); renderPage(); }, { once: true });
+      container.appendChild(btn);
+    }
   }
-  container.appendChild(grid);
+
+  renderPage();
 }
 
 function makeIconTile(file, showPath) {
@@ -458,17 +493,25 @@ function makeIconTile(file, showPath) {
   img.style.objectFit = 'contain';
 
   if (file.mimeType === 'image/svg+xml') {
-    // Fetch SVG content and create a blob URL for reliable rendering
-    // (Drive's thumbnail endpoint doesn't reliably serve SVGs)
-    getFileContent(state.token, file.id)
-      .then(svgText => {
-        const blob = new Blob([svgText], { type: 'image/svg+xml' });
-        const url = URL.createObjectURL(blob);
-        img.onload = () => URL.revokeObjectURL(url);
-        img.onerror = () => { URL.revokeObjectURL(url); img.style.display = 'none'; };
-        img.src = url;
-      })
-      .catch(() => { img.style.display = 'none'; });
+    // Lazy-load: only fetch SVG content when tile scrolls into view,
+    // and cap concurrent requests via semaphore to avoid flooding Drive API.
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries[0].isIntersecting) return;
+      observer.disconnect();
+      thumbSem.acquire().then(() =>
+        getFileContent(state.token, file.id)
+          .then(svgText => {
+            const blob = new Blob([svgText], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            img.onload = () => URL.revokeObjectURL(url);
+            img.onerror = () => { URL.revokeObjectURL(url); img.style.display = 'none'; };
+            img.src = url;
+          })
+          .catch(() => { img.style.display = 'none'; })
+          .finally(() => thumbSem.release())
+      );
+    }, { rootMargin: '100px' });
+    observer.observe(tile);
   } else {
     img.src = `https://drive.google.com/thumbnail?id=${file.id}&sz=w64`;
     img.onerror = () => { img.style.display = 'none'; };
