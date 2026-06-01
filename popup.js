@@ -207,6 +207,7 @@ async function loadAndShowIndex(rootFolderId) {
     index = await buildIndex(state.token, rootFolderId);
     await saveCachedIndex(index);
     state.index = index;
+    updateSyncBadge(index.builtAt);
     renderMain();
   } catch (err) {
     handleDriveError(err, rootFolderId);
