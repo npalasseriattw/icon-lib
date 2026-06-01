@@ -1,4 +1,4 @@
-import { extractFolderIdFromUrl } from './lib/utils.js';
+import { extractFolderIdFromUrl, formatTimeAgo, isCacheStale } from './lib/utils.js';
 import { buildIndex, DriveError } from './lib/drive.js';
 
 // ── State ──────────────────────────────────────────────────────────
@@ -175,11 +175,53 @@ document.getElementById('btn-reconnect').addEventListener('click', () => {
   });
 });
 
-// ── Stub: loadAndShowIndex and showErrorView ───────────────────────
-// These are implemented in Tasks 6–7. Stub here to avoid reference errors.
+// ── Index management ───────────────────────────────────────────────
+const CACHE_KEY = 'iconIndex';
+
+async function loadCachedIndex() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(CACHE_KEY, (r) => resolve(r[CACHE_KEY] ?? null));
+  });
+}
+
+async function saveCachedIndex(index) {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ [CACHE_KEY]: index }, resolve);
+  });
+}
+
 async function loadAndShowIndex(rootFolderId) {
   showView('view-loading');
+  updateSyncBadge(null);
+
+  let index = await loadCachedIndex();
+
+  if (index && index.rootFolderId === rootFolderId && !isCacheStale(index.builtAt)) {
+    state.index = index;
+    renderMain();
+    return;
+  }
+
   document.getElementById('loading-label').textContent = 'Loading icons from Drive…';
+  try {
+    index = await buildIndex(state.token, rootFolderId);
+    await saveCachedIndex(index);
+    state.index = index;
+    renderMain();
+  } catch (err) {
+    handleDriveError(err, rootFolderId);
+  }
+}
+
+function updateSyncBadge(builtAt) {
+  const badge = document.getElementById('sync-badge');
+  const label = document.getElementById('sync-label');
+  if (!builtAt) {
+    badge.classList.add('hidden');
+    return;
+  }
+  badge.classList.remove('hidden');
+  label.textContent = `Synced ${formatTimeAgo(builtAt)}`;
 }
 
 function showErrorView(message, showReconnect = false) {
@@ -188,6 +230,29 @@ function showErrorView(message, showReconnect = false) {
   document.getElementById('btn-reconnect').classList.toggle('hidden', !showReconnect);
 }
 
-function renderMain() {}
+function handleDriveError(err, rootFolderId) {
+  if (err instanceof DriveError) {
+    if (err.status === 401) {
+      chrome.storage.local.remove(['guestToken', 'guestTokenExpiry']);
+      showErrorView('Session expired. Please reconnect.', true);
+    } else if (err.status === 403 || err.status === 404) {
+      showErrorView("Can't access Drive folder. Check the folder exists and is shared with your account.", true);
+    } else {
+      showErrorView('Drive is unavailable, try again shortly.', false);
+    }
+  } else if (!navigator.onLine) {
+    if (state.index) {
+      renderMain();
+    } else {
+      showErrorView('No cached icons. Connect to the internet and refresh.', false);
+    }
+  } else {
+    showErrorView(`Unexpected error: ${err.message}`, false);
+  }
+}
+
+function renderMain() {
+  // Implemented in Task 7
+}
 
 document.addEventListener('DOMContentLoaded', init);
