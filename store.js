@@ -9,7 +9,12 @@ const STORE_NAME = 'kv';
 const localKv = {
   get(key) {
     const raw = localStorage.getItem(key);
-    return Promise.resolve(raw == null ? null : JSON.parse(raw));
+    if (raw == null) return Promise.resolve(null);
+    try {
+      return Promise.resolve(JSON.parse(raw));
+    } catch {
+      return Promise.resolve(null);
+    }
   },
   set(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
@@ -22,13 +27,17 @@ const localKv = {
 };
 
 // ── IndexedDB backend (large values) ──────────────────────────────
+let dbPromise = null;
 function openDb() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  return dbPromise;
 }
 
 async function idbRequest(mode, fn) {
@@ -38,6 +47,7 @@ async function idbRequest(mode, fn) {
     const req = fn(tx.objectStore(STORE_NAME));
     tx.oncomplete = () => resolve(req ? req.result : undefined);
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error ?? new DOMException('Transaction aborted', 'AbortError'));
   });
 }
 
