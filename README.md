@@ -32,6 +32,16 @@ An installable Progressive Web App (PWA) to browse, search, and copy icons store
 2. **Settings → Pages** → set **Source** to deploy from the `main` branch (root).
 3. The app will be served at `https://<user>.github.io/<repo>/` — this must match the authorised origin above.
 
+## Local development
+
+To run the app on your machine, serve the folder over HTTP (a `file://` URL won't work — service workers and GIS require a real origin):
+
+```bash
+python3 -m http.server 8000
+```
+
+Then open `http://localhost:8000/`. Add `http://localhost:8000` to your OAuth client's **Authorised JavaScript origins** (alongside the production origin) so sign-in works locally. `localhost` is treated as a secure context, so the service worker, clipboard, and install prompt all behave as they do in production.
+
 ## Using the app
 
 1. Open the hosted URL in Chrome.
