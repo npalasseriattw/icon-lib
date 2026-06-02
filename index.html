@@ -4,7 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Icon Library</title>
+  <meta name="theme-color" content="#111827">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-128.png">
   <link rel="stylesheet" href="popup.css">
+  <script src="https://accounts.google.com/gsi/client" async></script>
 </head>
 <body>
 
@@ -136,5 +140,12 @@
   </div>
 
   <script type="module" src="popup.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW registration failed', e));
+      });
+    }
+  </script>
 </body>
 </html>
