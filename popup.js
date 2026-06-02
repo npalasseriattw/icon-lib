@@ -432,6 +432,10 @@ function makeIconTile(file, showPath) {
             img.onerror = () => { URL.revokeObjectURL(url); img.style.display = 'none'; };
             img.src = url;
           })
+          // Hide the tile on any fetch failure. A 401 here is intentionally
+          // swallowed rather than surfaced — the next browse/copy action routes
+          // through handleDriveError and offers Reconnect, so we avoid spamming
+          // the error view from dozens of concurrent thumbnail loads.
           .catch(() => { img.style.display = 'none'; })
           .finally(() => thumbSem.release())
       );
