@@ -1,6 +1,7 @@
 import { extractFolderIdFromUrl, formatTimeAgo, isCacheStale } from './lib/utils.js';
 import { buildIndex, getFileContent, getFileBlob, DriveError } from './lib/drive.js';
 import { store } from './store.js';
+import { getToken, signIn } from './auth.js';
 
 // ── State ──────────────────────────────────────────────────────────
 const state = {
@@ -22,67 +23,6 @@ function showView(name) {
   document.getElementById('header').classList.toggle('hidden', !showHeader);
 }
 
-// ── Auth ───────────────────────────────────────────────────────────
-async function getSilentToken() {
-  return new Promise((resolve) => {
-    chrome.identity.getAuthToken({ interactive: false }, (token) => {
-      resolve(chrome.runtime.lastError || !token ? null : token);
-    });
-  });
-}
-
-async function getInteractiveToken() {
-  // Try Chrome account first (shows consent screen once)
-  const token = await new Promise((resolve) => {
-    chrome.identity.getAuthToken({ interactive: true }, (token) => {
-      resolve(chrome.runtime.lastError || !token ? null : token);
-    });
-  });
-  if (token) return token;
-
-  // Fallback: web auth flow for guest profiles
-  return webAuthFlow();
-}
-
-async function webAuthFlow() {
-  const { client_id } = chrome.runtime.getManifest().oauth2;
-  const redirectUrl = chrome.identity.getRedirectURL();
-  const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
-  authUrl.searchParams.set('client_id', client_id);
-  authUrl.searchParams.set('redirect_uri', redirectUrl);
-  authUrl.searchParams.set('response_type', 'token');
-  authUrl.searchParams.set('scope', 'https://www.googleapis.com/auth/drive.readonly');
-
-  return new Promise((resolve, reject) => {
-    chrome.identity.launchWebAuthFlow({ url: authUrl.toString(), interactive: true }, (redirectedTo) => {
-      if (chrome.runtime.lastError || !redirectedTo) {
-        reject(new Error(chrome.runtime.lastError?.message ?? 'Auth cancelled'));
-        return;
-      }
-      const hash = new URL(redirectedTo).hash.slice(1);
-      const params = new URLSearchParams(hash);
-      const token = params.get('access_token');
-      const expiresIn = parseInt(params.get('expires_in') ?? '3600', 10);
-      if (!token) { reject(new Error('No access token in response')); return; }
-
-      // Store guest token (not managed by Chrome identity)
-      const expiry = Math.floor(Date.now() / 1000) + expiresIn;
-      store.set('guestToken', token);
-      store.set('guestTokenExpiry', expiry);
-      resolve(token);
-    });
-  });
-}
-
-async function loadStoredGuestToken() {
-  const guestToken = await store.get('guestToken');
-  const guestTokenExpiry = await store.get('guestTokenExpiry');
-  if (guestToken && guestTokenExpiry > Math.floor(Date.now() / 1000)) {
-    return guestToken;
-  }
-  return null;
-}
-
 // ── Configuration ──────────────────────────────────────────────────
 async function loadRootFolderId() {
   return store.get('rootFolderId');
@@ -94,18 +34,13 @@ async function saveRootFolderId(id) {
 
 // ── Entry point ────────────────────────────────────────────────────
 async function init() {
-  // 1. Try silent auth
-  let token = await getSilentToken();
-
-  // 2. Try stored guest token
-  if (!token) token = await loadStoredGuestToken();
+  let token = await getToken();
 
   if (!token) {
-    // Show sign-in screen
     showView('view-auth');
     document.getElementById('btn-signin').addEventListener('click', async () => {
       try {
-        token = await getInteractiveToken();
+        token = await signIn();
         state.token = token;
         await afterAuth();
       } catch (err) {
@@ -161,7 +96,7 @@ document.getElementById('btn-settings').addEventListener('click', async () => {
 });
 
 document.getElementById('btn-reconnect').addEventListener('click', () => {
-  getInteractiveToken().then(async (token) => {
+  signIn().then(async (token) => {
     state.token = token;
     await afterAuth();
   }).catch((err) => {
@@ -335,7 +270,7 @@ function renderFolder(folderId) {
   setFooter(
     `${files.length} icons${subFolders.length > 0 ? ` · ${subFolders.length} subfolders` : ''}`,
     'Open in Drive →',
-    () => chrome.tabs.create({ url: driveUrl })
+    () => window.open(driveUrl, '_blank', 'noopener')
   );
 }
 
