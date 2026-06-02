@@ -1,5 +1,6 @@
 import { extractFolderIdFromUrl, formatTimeAgo, isCacheStale } from './lib/utils.js';
 import { buildIndex, getFileContent, getFileBlob, DriveError } from './lib/drive.js';
+import { store } from './store.js';
 
 // ── State ──────────────────────────────────────────────────────────
 const state = {
@@ -66,36 +67,29 @@ async function webAuthFlow() {
 
       // Store guest token (not managed by Chrome identity)
       const expiry = Math.floor(Date.now() / 1000) + expiresIn;
-      chrome.storage.local.set({ guestToken: token, guestTokenExpiry: expiry });
+      store.set('guestToken', token);
+      store.set('guestTokenExpiry', expiry);
       resolve(token);
     });
   });
 }
 
 async function loadStoredGuestToken() {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(['guestToken', 'guestTokenExpiry'], (result) => {
-      const { guestToken, guestTokenExpiry } = result;
-      if (guestToken && guestTokenExpiry > Math.floor(Date.now() / 1000)) {
-        resolve(guestToken);
-      } else {
-        resolve(null);
-      }
-    });
-  });
+  const guestToken = await store.get('guestToken');
+  const guestTokenExpiry = await store.get('guestTokenExpiry');
+  if (guestToken && guestTokenExpiry > Math.floor(Date.now() / 1000)) {
+    return guestToken;
+  }
+  return null;
 }
 
 // ── Configuration ──────────────────────────────────────────────────
 async function loadRootFolderId() {
-  return new Promise((resolve) => {
-    chrome.storage.local.get('rootFolderId', (r) => resolve(r.rootFolderId ?? null));
-  });
+  return store.get('rootFolderId');
 }
 
 async function saveRootFolderId(id) {
-  return new Promise((resolve) => {
-    chrome.storage.local.set({ rootFolderId: id }, resolve);
-  });
+  return store.set('rootFolderId', id);
 }
 
 // ── Entry point ────────────────────────────────────────────────────
@@ -158,12 +152,12 @@ function showConfigureView() {
   }, { once: true });
 }
 
-document.getElementById('btn-settings').addEventListener('click', () => {
-  chrome.storage.local.remove(['rootFolderId', 'iconIndex'], () => {
-    state.index = null;
-    showConfigureView();
-    getSilentToken().then(t => { if (t) state.token = t; });
-  });
+document.getElementById('btn-settings').addEventListener('click', async () => {
+  await store.remove(['rootFolderId', 'iconIndex']);
+  state.index = null;
+  showConfigureView();
+  const t = await getToken();
+  if (t) state.token = t;
 });
 
 document.getElementById('btn-reconnect').addEventListener('click', () => {
@@ -179,15 +173,11 @@ document.getElementById('btn-reconnect').addEventListener('click', () => {
 const CACHE_KEY = 'iconIndex';
 
 async function loadCachedIndex() {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(CACHE_KEY, (r) => resolve(r[CACHE_KEY] ?? null));
-  });
+  return store.get(CACHE_KEY);
 }
 
 async function saveCachedIndex(index) {
-  return new Promise((resolve) => {
-    chrome.storage.local.set({ [CACHE_KEY]: index }, resolve);
-  });
+  return store.set(CACHE_KEY, index);
 }
 
 async function loadAndShowIndex(rootFolderId) {
@@ -231,10 +221,10 @@ function showErrorView(message, showReconnect = false) {
   document.getElementById('btn-reconnect').classList.toggle('hidden', !showReconnect);
 }
 
-function handleDriveError(err, rootFolderId) {
+async function handleDriveError(err, rootFolderId) {
   if (err instanceof DriveError) {
     if (err.status === 401) {
-      chrome.storage.local.remove(['guestToken', 'guestTokenExpiry']);
+      await store.remove(['guestToken', 'guestTokenExpiry']);
       showErrorView('Session expired. Please reconnect.', true);
     } else if (err.status === 403 || err.status === 404) {
       showErrorView("Can't access Drive folder. Check the folder exists and is shared with your account.", true);
