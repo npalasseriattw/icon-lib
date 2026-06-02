@@ -13,6 +13,9 @@ function nowSeconds() {
 let tokenClient = null;
 
 function ensureTokenClient() {
+  if (CONFIG.clientId.startsWith('REPLACE_WITH')) {
+    throw new Error('auth.js: clientId is not configured — set CONFIG.clientId to your Web application OAuth client ID');
+  }
   if (tokenClient) return tokenClient;
   // google.accounts.oauth2 is provided by the GIS script loaded in index.html.
   tokenClient = google.accounts.oauth2.initTokenClient({
@@ -23,10 +26,15 @@ function ensureTokenClient() {
   return tokenClient;
 }
 
+// The GIS token client is a singleton with a mutable per-request callback, so
+// concurrent calls would clobber each other. Chain requests through `pending`
+// to guarantee one runs at a time.
+let pending = null;
+
 // prompt: 'none' = silent (no UI, fails if interaction needed)
 // prompt: ''     = interactive (consent shown only if not already granted)
 function requestToken(prompt) {
-  return new Promise((resolve, reject) => {
+  const run = () => new Promise((resolve, reject) => {
     const client = ensureTokenClient();
     client.callback = (resp) => {
       if (resp.error) { reject(new Error(resp.error)); return; }
@@ -39,6 +47,10 @@ function requestToken(prompt) {
       reject(err);
     }
   });
+  // Run after any in-flight request settles (success OR failure), so one failed
+  // request never blocks the queue.
+  pending = (pending ?? Promise.resolve()).then(run, run);
+  return pending;
 }
 
 async function acquire(prompt) {
