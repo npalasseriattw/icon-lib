@@ -11,7 +11,7 @@ function openDb() {
       const req = indexedDB.open(DB_NAME, 1);
       req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.onerror = () => { dbPromise = null; reject(req.error); };
     });
   }
   return dbPromise;
@@ -38,6 +38,8 @@ const idbBackend = {
   },
 };
 
+// Backend contract: get(id) resolves to the stored record or null (never undefined);
+// put(id, record) resolves when stored. Errors may reject; the cache swallows them.
 export function makeThumbCache({ get, put }) {
   return {
     // Returns { modifiedTime, type, data } when the cached entry's modifiedTime
