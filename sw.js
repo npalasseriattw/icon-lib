@@ -1,4 +1,4 @@
-const CACHE = 'iconlib-shell-v4';
+const CACHE = 'iconlib-shell-v5';
 const SHELL = [
   '.',
   'index.html',
@@ -10,6 +10,7 @@ const SHELL = [
   'lib/drive.js',
   'lib/utils.js',
   'manifest.webmanifest',
+  'favicon.svg',
   'icons/icon-16.png',
   'icons/icon-48.png',
   'icons/icon-128.png',
