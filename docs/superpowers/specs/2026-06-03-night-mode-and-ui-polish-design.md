@@ -28,7 +28,12 @@ the hardcoded grayscale colors with `var(--token)`. Accent indigo, success
 green, danger red, and the semi-transparent tile overlays stay (accent lightened
 in dark). The change is mechanical (color → token).
 
-Token set and values:
+Token set and values (the implementation plan refined these names — the
+authoritative, shipped set is: `--bg`, `--surface`, `--subtle`, `--border`,
+`--border-strong`, `--text`, `--text-2`, `--text-3`, `--text-4`, `--text-5`,
+`--accent`, `--accent-soft-bg`, `--accent-soft-border`, `--logo-bg`,
+`--folder-bg` — see `popup.css`). The illustrative block below uses the earlier
+draft names:
 
 ```css
 :root {
