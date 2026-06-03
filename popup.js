@@ -155,9 +155,16 @@ document.getElementById('btn-change-client').addEventListener('click', async () 
 document.getElementById('btn-theme').addEventListener('click', async () => {
   const root = document.documentElement;
   const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-  if (next === 'dark') root.setAttribute('data-theme', 'dark');
-  else root.removeAttribute('data-theme');
-  await store.set('theme', next);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (next === 'dark') {
+    root.setAttribute('data-theme', 'dark');
+    if (meta) meta.setAttribute('content', '#111827');
+    await store.set('theme', 'dark');
+  } else {
+    root.removeAttribute('data-theme');
+    if (meta) meta.setAttribute('content', '#ffffff');
+    await store.remove('theme');
+  }
 });
 
 // ── Index management ───────────────────────────────────────────────
