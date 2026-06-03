@@ -528,8 +528,10 @@ function makeIconTile(file, showPath) {
     const observer = new IntersectionObserver((entries) => {
       if (!entries[0].isIntersecting) return;
       observer.disconnect();
-      img.src = `https://drive.google.com/thumbnail?id=${file.id}&sz=w64`;
+      // Register the error handler before setting src to avoid missing a
+      // synchronous/immediate error event (see commit 00913cc).
       img.onerror = () => { img.style.display = 'none'; };
+      img.src = `https://drive.google.com/thumbnail?id=${file.id}&sz=w64`;
     }, { rootMargin: '100px' });
     observer.observe(tile);
   }
