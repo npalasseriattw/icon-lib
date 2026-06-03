@@ -6,7 +6,17 @@
   <title>Icon Library</title>
   <meta name="theme-color" content="#111827">
   <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="apple-touch-icon" href="icons/icon-128.png">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash of light.
+    // store.js serializes with JSON, so the stored value is "dark" (quoted).
+    try {
+      if (JSON.parse(localStorage.getItem('theme')) === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    } catch (e) {}
+  </script>
   <link rel="stylesheet" href="popup.css">
   <script src="https://accounts.google.com/gsi/client" async></script>
 </head>
@@ -16,7 +26,7 @@
   <header id="header" class="hidden">
     <div class="header-left">
       <div class="logo">
-        <svg viewBox="0 0 24 24" fill="white" width="14" height="14">
+        <svg viewBox="0 0 24 24" fill="white" width="16" height="16">
           <rect x="3" y="3" width="7" height="7" rx="1"/>
           <rect x="14" y="3" width="7" height="7" rx="1"/>
           <rect x="3" y="14" width="7" height="7" rx="1"/>
@@ -30,6 +40,15 @@
         <span class="sync-dot"></span>
         <span id="sync-label"></span>
       </span>
+      <button id="btn-theme" class="icon-btn" title="Toggle night mode" aria-label="Toggle night mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+        </svg>
+      </button>
       <button id="btn-settings" class="icon-btn" title="Change Drive folder" aria-label="Change Drive folder">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
           <circle cx="12" cy="12" r="3"/>
