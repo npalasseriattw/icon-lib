@@ -21,6 +21,7 @@ improve tile legibility. Two independent parts:
 | Data source | Google Drive remains source of truth (no git-committed icons, no CDN sync, no backend) |
 | Speed strategy | Local persistent cache of fetched bytes (Option A) |
 | Cache freshness | Key by `fileId`, validate against `modifiedTime` — auto-refreshes when an icon changes in Drive |
+| What gets cached | SVG source text only. PNG tiles use Drive's lightweight server-resized thumbnail (`?sz=w64`) — caching full-res PNGs just to show them at 40px would bloat storage/bandwidth. Full-res PNG stays reserved for the copy path. |
 | Background prefetch | None — cache on view (as icons scroll in), to avoid hammering Drive on large libraries |
 | Eviction | None now (YAGNI); SVGs are tiny, IndexedDB quota is ample. Revisit LRU only if needed |
 | Icon size | 40×40px (was 28×28) |
@@ -64,15 +65,16 @@ records are harmless orphans (small; optional cleanup later).
 The lazy-load (IntersectionObserver) path becomes **cache-first** for both
 SVG and PNG:
 
+**SVG tiles (cache-first):**
 1. On intersect, call `getThumb(file.id, file.modifiedTime)`.
-2. **Hit:** render immediately from cached bytes — no network. (SVG → blob URL
-   from text; PNG → object URL from blob.)
-3. **Miss:** fetch from Drive via the existing path (`getFileContent` for SVG;
-   for PNG, fetch the thumbnail URL as a blob instead of setting `img.src`
-   directly), then `putThumb(...)` and render.
+2. **Hit:** render immediately from the cached SVG text — no network.
+3. **Miss:** fetch via `getFileContent`, `putThumb(...)`, then render.
 
-PNG tiles thus move from a direct `img.src = drive.google.com/thumbnail?...` to
-the same fetch-and-cache path, so PNGs are cached and work offline too.
+**PNG tiles (lightweight thumbnail):** lazy-load `img.src =
+drive.google.com/thumbnail?id=…&sz=w64` (server-resized, tiny, CDN/browser
+cached). Not stored in IndexedDB — avoids downloading full-res PNGs purely to
+display them at 40px. Full-resolution PNG is still fetched only by the copy
+path (unchanged). PNG tiles therefore are not guaranteed offline; SVG tiles are.
 
 Object URLs are revoked on `img.onload`/`onerror` (existing behavior) to avoid
 leaks. Cache misses still pass through the existing 6-at-a-time `thumbSem`
@@ -118,11 +120,12 @@ the service worker.
   2. Re-open / revisit a folder → icons appear instantly (no network in
      DevTools → Network for those thumbnails).
   3. Offline reload → cached icons still render.
-  4. Edit an icon in Drive, hit **Refresh** → the changed icon updates (cache
-     superseded via `modifiedTime`).
-  5. DevTools → Application → IndexedDB shows a `thumbs` store populated by id.
+  4. Edit an SVG icon in Drive, hit **Refresh** → the changed icon updates
+     (cache superseded via `modifiedTime`).
+  5. DevTools → Application → IndexedDB shows a `thumbs` store populated by id
+     (SVG entries).
   6. Icons render at 40px; labels are dark, bold, legible.
-  7. PNG icons cache and render offline (not just SVGs).
+  7. SVG icons render offline (PNG tiles use the live Drive thumbnail).
 
 ## Out of scope (YAGNI)
 
