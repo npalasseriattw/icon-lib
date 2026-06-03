@@ -39,6 +39,24 @@
     </div>
   </header>
 
+  <!-- ── View: First-run setup (OAuth Client ID) ── -->
+  <div id="view-setup" class="view hidden">
+    <div class="configure-panel">
+      <label class="configure-label" for="input-client-id">Enter your Google OAuth Client ID</label>
+      <p class="muted">Stored only in this browser — never committed to the project or sent anywhere else. Create a "Web application" OAuth client in Google Cloud and paste its Client ID (not the client secret) here.</p>
+      <input
+        id="input-client-id"
+        class="text-input"
+        type="text"
+        placeholder="1234567890-abc….apps.googleusercontent.com"
+        autocomplete="off"
+        spellcheck="false"
+      >
+      <span id="setup-error" class="input-error hidden"></span>
+      <button id="btn-save-client-id" class="btn-primary">Save &amp; continue</button>
+    </div>
+  </div>
+
   <!-- ── View: Unauthenticated ── -->
   <div id="view-auth" class="view hidden">
     <div class="center-panel">
@@ -114,6 +132,7 @@
     <div class="center-panel">
       <p id="error-message" class="error-text"></p>
       <button id="btn-reconnect" class="btn-secondary">Reconnect</button>
+      <button id="btn-change-client" class="btn-secondary hidden">Change OAuth client ID</button>
     </div>
   </div>
 

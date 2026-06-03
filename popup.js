@@ -1,7 +1,7 @@
 import { extractFolderIdFromUrl, formatTimeAgo, isCacheStale } from './lib/utils.js';
 import { buildIndex, getFileContent, getFileBlob, DriveError } from './lib/drive.js';
 import { store } from './store.js';
-import { getToken, signIn } from './auth.js';
+import { getToken, signIn, hasClientId, setClientId, clearClientId } from './auth.js';
 
 // ── State ──────────────────────────────────────────────────────────
 const state = {
@@ -13,7 +13,7 @@ const state = {
 };
 
 // ── View switching ─────────────────────────────────────────────────
-const VIEWS = ['view-auth', 'view-configure', 'view-loading', 'view-error', 'view-main'];
+const VIEWS = ['view-setup', 'view-auth', 'view-configure', 'view-loading', 'view-error', 'view-main'];
 
 function showView(name) {
   for (const id of VIEWS) {
@@ -34,24 +34,63 @@ async function saveRootFolderId(id) {
 
 // ── Entry point ────────────────────────────────────────────────────
 async function init() {
-  let token = await getToken();
+  // The OAuth Client ID is not bundled in source — demand it on first run and
+  // persist it per-browser (see auth.js).
+  if (!(await hasClientId())) {
+    showClientIdSetupView();
+    return;
+  }
+  await startAuth();
+}
+
+async function startAuth() {
+  const token = await getToken();
 
   if (!token) {
     showView('view-auth');
-    document.getElementById('btn-signin').addEventListener('click', async () => {
+    // onclick (not addEventListener) so re-entering this view never stacks handlers.
+    document.getElementById('btn-signin').onclick = async () => {
       try {
-        token = await signIn();
-        state.token = token;
+        state.token = await signIn();
         await afterAuth();
       } catch (err) {
-        showErrorView(`Sign-in failed: ${err.message}`, true);
+        showErrorView(`Sign-in failed: ${err.message}`, true, true);
       }
-    });
+    };
     return;
   }
 
   state.token = token;
   await afterAuth();
+}
+
+function showClientIdSetupView() {
+  showView('view-setup');
+
+  const input = document.getElementById('input-client-id');
+  const errorEl = document.getElementById('setup-error');
+  const btn = document.getElementById('btn-save-client-id');
+
+  const submit = async () => {
+    errorEl.classList.add('hidden');
+    const id = input.value.trim();
+    if (!/\.apps\.googleusercontent\.com$/.test(id)) {
+      errorEl.textContent = 'Enter a valid OAuth Client ID (it ends with .apps.googleusercontent.com).';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    try {
+      await setClientId(id);
+      await startAuth();
+    } catch (err) {
+      errorEl.textContent = `Could not save: ${err.message}`;
+      errorEl.classList.remove('hidden');
+    }
+  };
+
+  // onclick assignment overwrites any prior handler, so retries/re-entry don't stack.
+  btn.onclick = submit;
+  input.onkeydown = (e) => { if (e.key === 'Enter') submit(); };
 }
 
 async function afterAuth() {
@@ -100,8 +139,13 @@ document.getElementById('btn-reconnect').addEventListener('click', () => {
     state.token = token;
     await afterAuth();
   }).catch((err) => {
-    showErrorView(`Reconnect failed: ${err.message}`, true);
+    showErrorView(`Reconnect failed: ${err.message}`, true, true);
   });
+});
+
+document.getElementById('btn-change-client').addEventListener('click', async () => {
+  await clearClientId();
+  showClientIdSetupView();
 });
 
 // ── Index management ───────────────────────────────────────────────
@@ -150,10 +194,11 @@ function updateSyncBadge(builtAt) {
   label.textContent = `Synced ${formatTimeAgo(builtAt)}`;
 }
 
-function showErrorView(message, showReconnect = false) {
+function showErrorView(message, showReconnect = false, showChangeClient = false) {
   showView('view-error');
   document.getElementById('error-message').textContent = message;
   document.getElementById('btn-reconnect').classList.toggle('hidden', !showReconnect);
+  document.getElementById('btn-change-client').classList.toggle('hidden', !showChangeClient);
 }
 
 async function handleDriveError(err, rootFolderId) {

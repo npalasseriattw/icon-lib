@@ -24,7 +24,7 @@ An installable Progressive Web App (PWA) to browse, search, and copy icons store
 4. Set **Application type** to **Web application**.
 5. Under **Authorised JavaScript origins**, add the origin where the app is hosted, e.g. `https://npalasseriattw.github.io`.
 6. Click **Create** and copy the **Client ID**.
-7. Paste it into `auth.js` as `CONFIG.clientId`.
+7. You enter this Client ID in the app on first launch (see *Using the app*) — it is stored only in your browser, never committed to the project. **Do not** copy the client *secret*; the browser flow doesn't use it.
 
 ## Hosting (GitHub Pages)
 
@@ -45,12 +45,14 @@ Then open `http://localhost:8000/`. Add `http://localhost:8000` to your OAuth cl
 ## Using the app
 
 1. Open the hosted URL in Chrome.
-2. Click the install icon in the address bar (or **⋮ → Install Icon Library**) to add it as an app.
-3. Click **Sign in**, authorise Drive read-only access.
-4. Paste the URL of your Drive icons folder when prompted.
-5. Browse, search, and click any icon to copy it.
+2. On first launch, paste your OAuth **Client ID** when prompted — it's saved in this browser only and never leaves your machine. (If you ever mistype it, the error screen has a **Change OAuth client ID** button.)
+3. Click the install icon in the address bar (or **⋮ → Install Icon Library**) to add it as an app.
+4. Click **Sign in**, authorise Drive read-only access.
+5. Paste the URL of your Drive icons folder when prompted.
+6. Browse, search, and click any icon to copy it.
 
 ## Notes
 
 - Sign-in uses Google Identity Services entirely in the browser — no backend, no stored secrets. Access tokens last about an hour; re-authorising is usually a single click.
+- The OAuth **Client ID** is a public identifier (not a secret), but it is intentionally kept out of source control: you enter it once and it is stored per-browser in `localStorage`. The OAuth client's **Authorised JavaScript origins** allowlist — not the secrecy of the ID — is what actually restricts who can obtain tokens. Never commit the client *secret* Google issues for a "Web application" client; the browser flow does not use it.
 - The icon index is cached in IndexedDB; use the **↻ Refresh** action to re-sync after adding icons in Drive.

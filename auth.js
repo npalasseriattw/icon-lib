@@ -1,25 +1,55 @@
 import { store } from './store.js';
 
 export const CONFIG = {
-  // Replace with your Google Cloud "Web application" OAuth client ID (Task 9).
-  clientId: 'REPLACE_WITH_WEB_CLIENT_ID.apps.googleusercontent.com',
   scope: 'https://www.googleapis.com/auth/drive.readonly',
 };
+
+// The OAuth Client ID for a browser client is a public identifier, not a secret
+// — but we deliberately keep it out of source control and store it per-browser
+// instead. The user enters it on first run; it never leaves their machine.
+// (Never store the client *secret* Google issues for a "Web application" client
+// — the browser token flow does not use it.)
+const CLIENT_ID_KEY = 'oauthClientId';
+
+export async function getClientId() {
+  const id = await store.get(CLIENT_ID_KEY);
+  return id ? id.trim() : null;
+}
+
+export async function hasClientId() {
+  return !!(await getClientId());
+}
+
+export async function setClientId(id) {
+  await store.set(CLIENT_ID_KEY, id.trim());
+  // Force the token client to rebuild against the new id.
+  tokenClient = null;
+  tokenClientId = null;
+}
+
+export async function clearClientId() {
+  await store.remove(CLIENT_ID_KEY);
+  tokenClient = null;
+  tokenClientId = null;
+}
 
 function nowSeconds() {
   return Math.floor(Date.now() / 1000);
 }
 
 let tokenClient = null;
+let tokenClientId = null;
 
-function ensureTokenClient() {
-  if (CONFIG.clientId.startsWith('REPLACE_WITH')) {
-    throw new Error('auth.js: clientId is not configured — set CONFIG.clientId to your Web application OAuth client ID');
+async function ensureTokenClient() {
+  const clientId = await getClientId();
+  if (!clientId) {
+    throw new Error('OAuth Client ID is not configured');
   }
-  if (tokenClient) return tokenClient;
   // google.accounts.oauth2 is provided by the GIS script loaded in index.html.
+  if (tokenClient && tokenClientId === clientId) return tokenClient;
+  tokenClientId = clientId;
   tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CONFIG.clientId,
+    client_id: clientId,
     scope: CONFIG.scope,
     callback: () => {}, // replaced per-request below
   });
@@ -34,19 +64,21 @@ let pending = null;
 // prompt: 'none' = silent (no UI, fails if interaction needed)
 // prompt: ''     = interactive (consent shown only if not already granted)
 function requestToken(prompt) {
-  const run = () => new Promise((resolve, reject) => {
-    const client = ensureTokenClient();
-    client.callback = (resp) => {
-      if (resp.error) { reject(new Error(resp.error)); return; }
-      resolve(resp);
-    };
-    client.error_callback = (err) => reject(new Error(err?.type ?? 'auth_failed'));
-    try {
-      client.requestAccessToken({ prompt });
-    } catch (err) {
-      reject(err);
-    }
-  });
+  const run = async () => {
+    const client = await ensureTokenClient();
+    return new Promise((resolve, reject) => {
+      client.callback = (resp) => {
+        if (resp.error) { reject(new Error(resp.error)); return; }
+        resolve(resp);
+      };
+      client.error_callback = (err) => reject(new Error(err?.type ?? 'auth_failed'));
+      try {
+        client.requestAccessToken({ prompt });
+      } catch (err) {
+        reject(err);
+      }
+    });
+  };
   // Run after any in-flight request settles (success OR failure), so one failed
   // request never blocks the queue.
   pending = (pending ?? Promise.resolve()).then(run, run);

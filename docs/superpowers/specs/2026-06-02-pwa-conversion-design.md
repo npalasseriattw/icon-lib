@@ -58,7 +58,17 @@ Wraps `google.accounts.oauth2.initTokenClient` with scope
 - No redirect URI needed — GIS uses a popup + `postMessage`. Only the
   **authorized JavaScript origin** `https://npalasseriattw.github.io` is
   registered in the OAuth client.
-- `CONFIG.clientId` constant replaces `chrome.runtime.getManifest().oauth2`.
+
+**OAuth Client ID handling (security):** the Client ID for a browser client is a
+public identifier, not a secret — but it is kept **out of source control** and
+stored per-browser instead. `auth.js` exposes `getClientId()` / `hasClientId()`
+/ `setClientId()` / `clearClientId()`, persisting the value via `store.js`
+(localStorage key `oauthClientId`). On first run, when no Client ID is set,
+`popup.js` shows a setup view (`view-setup`) demanding it; the error view offers
+a **Change OAuth client ID** recovery path. The real access-control boundary is
+the OAuth client's **Authorized JavaScript origins** allowlist, not the secrecy
+of the ID. The client *secret* Google issues for a "Web application" client is
+never used by the browser token flow and must never be committed.
 
 ### `store.js` — storage shim
 

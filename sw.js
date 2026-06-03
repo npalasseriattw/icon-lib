@@ -1,4 +1,4 @@
-const CACHE = 'iconlib-shell-v1';
+const CACHE = 'iconlib-shell-v2';
 const SHELL = [
   '.',
   'index.html',
