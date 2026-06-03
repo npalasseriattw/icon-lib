@@ -1,4 +1,4 @@
-const CACHE = 'iconlib-shell-v3';
+const CACHE = 'iconlib-shell-v4';
 const SHELL = [
   '.',
   'index.html',
@@ -6,6 +6,7 @@ const SHELL = [
   'popup.js',
   'auth.js',
   'store.js',
+  'thumb-cache.js',
   'lib/drive.js',
   'lib/utils.js',
   'manifest.webmanifest',
