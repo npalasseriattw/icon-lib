@@ -150,6 +150,16 @@ document.getElementById('btn-change-client').addEventListener('click', async () 
   showClientIdSetupView();
 });
 
+// Night-mode toggle. The saved theme is applied pre-paint by the inline script
+// in index.html; here we just flip it and persist the choice.
+document.getElementById('btn-theme').addEventListener('click', async () => {
+  const root = document.documentElement;
+  const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  if (next === 'dark') root.setAttribute('data-theme', 'dark');
+  else root.removeAttribute('data-theme');
+  await store.set('theme', next);
+});
+
 // ── Index management ───────────────────────────────────────────────
 const CACHE_KEY = 'iconIndex';
 
