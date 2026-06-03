@@ -18,11 +18,11 @@ async function mockListChildren(_token, folderId) {
   const tree = {
     'root': [
       { id: 'aws-folder', name: 'AWS', mimeType: 'application/vnd.google-apps.folder' },
-      { id: 'logo-file', name: 'logo.svg', mimeType: 'image/svg+xml' },
+      { id: 'logo-file', name: 'logo.svg', mimeType: 'image/svg+xml', modifiedTime: '2026-01-01T00:00:00.000Z' },
     ],
     'aws-folder': [
-      { id: 'ec2-file', name: 'ec2.svg', mimeType: 'image/svg+xml' },
-      { id: 's3-file', name: 's3.svg', mimeType: 'image/svg+xml' },
+      { id: 'ec2-file', name: 'ec2.svg', mimeType: 'image/svg+xml', modifiedTime: '2026-02-02T00:00:00.000Z' },
+      { id: 's3-file', name: 's3.svg', mimeType: 'image/svg+xml', modifiedTime: '2026-03-03T00:00:00.000Z' },
     ],
   };
   return tree[folderId] || [];
@@ -48,6 +48,8 @@ const ec2 = index.files.find(f => f.id === 'ec2-file');
 assert(ec2 !== undefined, 'ec2.svg found');
 assert(ec2.folderId === 'aws-folder', 'ec2.svg has correct folderId');
 assert(ec2.path === 'AWS', 'ec2.svg has correct path');
+assert(logo.modifiedTime === '2026-01-01T00:00:00.000Z', 'logo.svg carries modifiedTime');
+assert(ec2.modifiedTime === '2026-02-02T00:00:00.000Z', 'ec2.svg carries modifiedTime');
 
 assert(typeof index.builtAt === 'number', 'builtAt is a number');
 assert(index.rootFolderId === 'root', 'rootFolderId matches input');
