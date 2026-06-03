@@ -94,6 +94,7 @@ function showClientIdSetupView() {
 }
 
 async function afterAuth() {
+  gridPageSize = (await store.get(PAGE_SIZE_KEY)) ?? DEFAULT_PAGE_SIZE;
   const rootFolderId = await loadRootFolderId();
   if (!rootFolderId) {
     showConfigureView();
@@ -239,7 +240,9 @@ const thumbSem = (() => {
   };
 })();
 
-const GRID_PAGE_SIZE = 100;
+const PAGE_SIZE_KEY = 'gridPageSize';
+const DEFAULT_PAGE_SIZE = 250;
+let gridPageSize = DEFAULT_PAGE_SIZE;
 
 // ── Rendering ──────────────────────────────────────────────────────
 function renderMain() {
@@ -253,6 +256,27 @@ function renderMain() {
   renderRoot();
   searchBound = false;
   bindSearchInput();
+  bindPageSize();
+}
+
+// Re-render whatever the user is currently looking at (root / folder / search).
+function rerenderCurrent() {
+  if (state.searchQuery) renderSearch(state.searchQuery);
+  else if (state.currentFolderId) renderFolder(state.currentFolderId);
+  else renderRoot();
+}
+
+let pageSizeBound = false;
+function bindPageSize() {
+  const select = document.getElementById('select-page-size');
+  select.value = String(gridPageSize);
+  if (pageSizeBound) return;
+  pageSizeBound = true;
+  select.addEventListener('change', async () => {
+    gridPageSize = parseInt(select.value, 10);
+    await store.set(PAGE_SIZE_KEY, gridPageSize);
+    rerenderCurrent();
+  });
 }
 
 function renderRoot() {
@@ -429,12 +453,12 @@ function renderIconGrid(files, container, showPath) {
   function renderPage() {
     const grid = document.createElement('div');
     grid.className = 'icon-grid';
-    const page = files.slice(offset, offset + GRID_PAGE_SIZE);
+    const page = files.slice(offset, offset + gridPageSize);
     for (const file of page) {
       grid.appendChild(makeIconTile(file, showPath));
     }
     container.appendChild(grid);
-    offset += GRID_PAGE_SIZE;
+    offset += gridPageSize;
 
     if (offset < files.length) {
       const btn = document.createElement('button');
