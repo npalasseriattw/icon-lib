@@ -75,6 +75,7 @@ header {
 }
 
 .app-title { font-size: 18px; font-weight: 600; color: var(--text); }
+.app-version { font-size: 10px; color: var(--text-4); margin-left: 4px; align-self: flex-end; padding-bottom: 2px; }
 
 .header-right { display: flex; align-items: center; gap: 8px; }
 

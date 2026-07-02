@@ -498,6 +498,8 @@ function makeIconTile(file, showPath) {
 
   const nameWithoutExt = file.name.replace(/\.(svg|png)$/i, '');
 
+  tile.title = file.name;
+
   const img = document.createElement('img');
   img.alt = nameWithoutExt;
 
