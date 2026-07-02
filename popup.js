@@ -277,6 +277,7 @@ function renderMain() {
   searchBound = false;
   bindSearchInput();
   bindPageSize();
+  showEmptyPanel();
 }
 
 // Re-render whatever the user is currently looking at (root / folder / search).
@@ -300,6 +301,8 @@ function bindPageSize() {
 }
 
 function renderRoot() {
+  selectedTile = null;
+  showEmptyPanel();
   state.currentFolderId = null;
   renderBreadcrumb([{ id: null, name: 'All icons', isCurrent: true }]);
 
@@ -331,6 +334,8 @@ function renderRoot() {
 }
 
 function renderFolder(folderId) {
+  selectedTile = null;
+  showEmptyPanel();
   state.currentFolderId = folderId;
 
   const crumbs = buildCrumbPath(folderId);
@@ -364,6 +369,8 @@ function renderFolder(folderId) {
 }
 
 function renderSearch(query) {
+  selectedTile = null;
+  showEmptyPanel();
   state.searchQuery = query;
 
   const matched = state.index.files.filter(f =>
@@ -497,6 +504,99 @@ function selectTile(file, tile) {
   selectedTile = tile;
   tile.classList.add('selected');
   showDetailPanel(file);
+}
+
+function showEmptyPanel() {
+  const panel = document.getElementById('detail-panel');
+  panel.innerHTML = '<div class="detail-empty"><p>Click an icon<br>to see details</p></div>';
+}
+
+function showDetailPanel(file) {
+  const panel = document.getElementById('detail-panel');
+  panel.innerHTML = '';
+
+  // Large preview
+  const preview = document.createElement('div');
+  preview.className = 'detail-preview';
+  const img = document.createElement('img');
+  img.alt = file.name;
+
+  if (file.mimeType === 'image/svg+xml') {
+    thumbCache.getThumb(file.id, file.modifiedTime).then(async (cached) => {
+      let svgText;
+      if (cached) {
+        svgText = cached.data;
+      } else {
+        svgText = await getFileContent(state.token, file.id);
+        await thumbCache.putThumb(file.id, file.modifiedTime, file.mimeType, svgText);
+      }
+      const blob = new Blob([svgText], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      img.onload = () => URL.revokeObjectURL(url);
+      img.src = url;
+    }).catch(() => { img.style.display = 'none'; });
+  } else {
+    img.onerror = () => { img.style.display = 'none'; };
+    img.src = `https://drive.google.com/thumbnail?id=${file.id}&sz=w128`;
+  }
+
+  preview.appendChild(img);
+  panel.appendChild(preview);
+
+  // Meta
+  const meta = document.createElement('div');
+  meta.className = 'detail-meta';
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'detail-filename';
+  nameEl.textContent = file.name;
+  meta.appendChild(nameEl);
+
+  if (file.path) {
+    const pathEl = document.createElement('div');
+    pathEl.className = 'detail-path';
+    pathEl.textContent = file.path;
+    meta.appendChild(pathEl);
+  }
+
+  const badge = document.createElement('div');
+  badge.className = 'detail-type-badge';
+  badge.textContent = file.mimeType === 'image/svg+xml' ? 'SVG' : 'PNG';
+  meta.appendChild(badge);
+
+  panel.appendChild(meta);
+
+  // Copy actions
+  const actions = document.createElement('div');
+  actions.className = 'detail-actions';
+
+  if (file.mimeType === 'image/svg+xml') {
+    const btnBoth = document.createElement('button');
+    btnBoth.className = 'btn-copy-panel';
+    btnBoth.textContent = 'Copy SVG + PNG';
+    btnBoth.addEventListener('click', () => handleCopy(file.id, file.mimeType, 'both', btnBoth));
+    actions.appendChild(btnBoth);
+
+    const btnSvg = document.createElement('button');
+    btnSvg.className = 'btn-copy-panel-secondary';
+    btnSvg.textContent = 'Copy SVG only';
+    btnSvg.addEventListener('click', () => handleCopy(file.id, file.mimeType, 'svg', btnSvg));
+    actions.appendChild(btnSvg);
+
+    const btnPng = document.createElement('button');
+    btnPng.className = 'btn-copy-panel-secondary';
+    btnPng.textContent = 'Copy PNG only';
+    btnPng.addEventListener('click', () => handleCopy(file.id, file.mimeType, 'png', btnPng));
+    actions.appendChild(btnPng);
+  } else {
+    const btnPng = document.createElement('button');
+    btnPng.className = 'btn-copy-panel';
+    btnPng.textContent = 'Copy PNG';
+    btnPng.addEventListener('click', () => handleCopy(file.id, file.mimeType, 'png', btnPng));
+    actions.appendChild(btnPng);
+  }
+
+  panel.appendChild(actions);
 }
 
 function makeIconTile(file, showPath) {
