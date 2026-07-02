@@ -219,6 +219,140 @@ header {
 .bc-clear { margin-left: auto; color: var(--text-4); cursor: pointer; font-size: 10px; }
 .bc-clear:hover { color: var(--text-2); }
 
+/* ── Main split layout ── */
+#view-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-split {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.main-split .grid-wrap {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.detail-panel {
+  width: 220px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--subtle);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 14px 12px;
+  gap: 12px;
+  background: var(--bg);
+}
+
+.detail-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-4);
+  line-height: 1.6;
+}
+
+.detail-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  flex-shrink: 0;
+}
+
+.detail-preview img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+
+.detail-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.detail-filename {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.detail-path {
+  font-size: 10px;
+  color: var(--text-4);
+  line-height: 1.4;
+}
+
+.detail-type-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--accent-soft-bg);
+  color: var(--accent);
+  align-self: flex-start;
+}
+
+.detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.btn-copy-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: opacity 0.1s;
+}
+.btn-copy-panel:disabled { opacity: 0.6; cursor: default; }
+
+.btn-copy-panel-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.1s;
+}
+.btn-copy-panel-secondary:hover { background: var(--subtle); }
+.btn-copy-panel-secondary:disabled { opacity: 0.6; cursor: default; }
+
 /* ── Folder list ── */
 .folder-list { display: flex; flex-direction: column; gap: 1px; }
 
@@ -260,6 +394,11 @@ header {
   transition: background 0.1s, border-color 0.1s;
 }
 .icon-tile:hover { background: var(--accent-soft-bg); border-color: var(--accent-soft-border); }
+.icon-tile.selected {
+  background: var(--accent-soft-bg);
+  border-color: var(--accent);
+  border-width: 2px;
+}
 
 .icon-tile img {
   width: 40px; height: 40px;
@@ -279,19 +418,6 @@ header {
   white-space: nowrap; position: absolute;
   bottom: 12px; left: 0; right: 0;
 }
-
-.copy-overlay {
-  position: absolute; inset: 0;
-  background: rgba(99,102,241,0.88);
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  opacity: 0; transition: opacity 0.15s;
-  border-radius: 6px;
-  font-size: 9px; font-weight: 600;
-  color: white; letter-spacing: 0.04em; gap: 3px;
-}
-.icon-tile:hover .copy-overlay { opacity: 1; }
-.icon-tile.copying .copy-overlay { opacity: 1; background: rgba(16,185,129,0.9); }
 
 /* ── Footer ── */
 .popup-footer {
